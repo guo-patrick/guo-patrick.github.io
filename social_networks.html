@@ -1,0 +1,166 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!--
+Design by TEMPLATED
+http://templated.co
+Released for free under the Creative Commons Attribution License
+
+Name       : PlainDisplay 
+Description: A two-column, fixed-width design with dark color scheme.
+Version    : 1.0
+Released   : 20140309
+
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>新人工程師的網頁</title>
+<meta name="keywords" content="" />
+<meta name="description" content="" />
+<link href="http://fonts.googleapis.com/css?family=Varela" rel="stylesheet" />
+<link href="default.css" rel="stylesheet" type="text/css" media="all" />
+<link href="fonts.css" rel="stylesheet" type="text/css" media="all" />
+
+<!--[if IE 6]><link href="default_ie6.css" rel="stylesheet" type="text/css" /><![endif]-->
+<style>
+	#myStyle{
+		background-color: aliceblue;
+	}
+</style>
+</head>
+<body>
+   <pre>
+##   ER model
+##   k： number of samples
+##   N : dim
+##   P : probability of edge
+ K = 10000
+ N = 100
+ P = 0.1
+ #rbinom(N,N,prob = P)
+ #p = (p^m)*(1-p)^(choose(N,2)-m)
+ A = array(0,dim = c(N,N,K))  
+ temp = (N^2-N)/2
+ Density = matrix(NA,1,K)
+ Diag = matrix(NA,1,K)
+ #class_fun_1 = function(K,N,P)
+ for(num in 1:K){
+     B = A[,,num]     
+    B[upper.tri(B)] = rbinom(temp , size=1,prob = P)
+    A[,,num] = B+t(B)
+    Density[1,num] = sum(B)/temp
+    C = A[,,num] %*% A[,,num] %*% A[,,num]
+    Diag[1,num] = sum(diag(C)/6)
+ }
+
+##  block ER model 
+K = 3
+N = c(100,100)
+P = c(0.7,0.6,0.1)#length(N)(length(N)-1)/2
+A_1 = matrix(0,N[1],N[1])  
+A_2 = matrix(0,N[1],N[2])
+A_3 = matrix(0,N[2],N[2])  
+#   A = rbind(cbind(A_1,A_2),cbind(t(A_2),A_3))
+temp = apply(N,1,function(i)(N[1]^2-N[1])/2)
+# Density = matrix(NA,1,K)
+# Diag = matrix(NA,1,K)
+ block_network_simulation = function(N=c(),P=c(),K = 1){ 
+    ###
+    local_function_1 = function(n,p){
+      A = matrix(0,n,n)
+      tempt = n*(n-1)/2
+      A[upper.tri(A)] = rbinom(tempt,1,p)
+      return(A)
+    }           # function_1
+    local_function_2 = function(n1,n2,p){
+        A = matrix(rbinom(n1*n2,1,p),n1,n2)
+        return(A)
+    }          # function_2
+    local_function_3 = function(n=c(),p=c()){
+        C = matrix(0,1,sum(n))
+      for (i in 1:length(n)) {
+        A = local_function_1(n[i],p[1])
+        p = p[-1]
+        if(i != length(n)){
+            B = mapply(local_function_2,n[-c(1:i)],n1=n[i],p=p[c(1:(length(n)-i))])
+            B = matrix(B,nrow=n[i],byrow = F)
+        }
+        
+        p = p[-c(1:(length(n)-i))]
+        if(i == 1){ A = cbind(A,B)
+        }else if(i<length(n)){
+            A = cbind(matrix(0,n[i],sum(n[c(1:(i-1))])),cbind(A,B))} else{
+            A = cbind(matrix(0,n[i],sum(n[c(1:(i-1))])),A)
+            }
+        C = rbind(C,A)
+      }
+        C = C[-1,]
+        return(C) 
+    }    # function_3
+    simulation_array = array(NA,dim = c(sum(N),sum(N),K))
+    for(i in 1:K){
+    simulation_array[,,i] = local_function_3(n=N,p=P )
+    }
+return(simulation_array) 
+}# c(5,5,5),c(1,0.3,0.3,1,0.3,1)
+blockProb_autoConduction = function(n_value1,n_value2,n_length){
+  C = c()
+  for(i in 1:n_length){
+    C_1 = numeric(length = (n_length - i))
+    C_1 = replace(C_1,values = n_value2)
+    C = c(C,n_value1,C_1)
+  }
+  return(C)
+}
+ B = block_network_simulation(replace(numeric(10),values = 4), blockProb_autoConduction(0.8,0.1,10) , 10000)
+################################################# M: sample , N :size ,p: prod of link ,q: number of links
+#########           BA model       ############## # growth
+################################################# # previous attachment
+ BA_model = function(M,N){
+ local_function_1=function(data_matrix){
+ #initial_matrix = matrix(0,N,N)
+ data_matrix[1,2]=1
+ data_matrix[1,3]=1
+ data_matrix[2,1]=1
+ data_matrix[2,3]=1
+ data_matrix[3,1]=1
+ data_matrix[3,2]=1
+ for(i in 4:N){
+ weighted_prob = apply(data_matrix[c(1:i-1),],1,sum)
+ weighted_prob = weighted_prob/sum(weighted_prob)
+ new = sample.int(i-1,1,replace = F,prob = weighted_prob)
+ data_matrix[i,new] = 1
+ data_matrix[new,i] = 1
+   }# local loop
+ return(data_matrix)
+   }#local function
+  A = array(0,dim=c(N,N,M)) 
+  B = apply(A,3,local_function_1)
+  C = array(B,dim = c(N,N,M))
+ return(C)
+ }
+ ####################################################
+ ##############        ERGM model   #################
+ ####################################################
+ ERGM_simulation = function(M=1,N=100,beta_1=0.2,beta_2=-0.1,time=1000){
+   #A = array(0,dim = c(N,N,M))  #given initial A^0
+   initial_A = # xij ~ Ber(0.5)
+   local_function_1 = function(data_matrix,N){
+     A = data_matrix
+   for(i in 1:N-1){
+     for(j in i+1:N){
+       T_1 = 
+       T_2 = t(A[,i])%*%A[,i]   
+     }
+   }
+     return(data_matrix)
+   }#local function 1
+ }
+ 
+# ex: beta_1 = 0.2  ,beta_2 = -0.1
+
+   </pre>
+
+
+
+</body>
+</html>
